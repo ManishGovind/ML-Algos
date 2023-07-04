@@ -1,0 +1,72 @@
+
+import sys 
+import numpy as np 
+from PCA import PCA 
+import Utils
+import matplotlib.cm as cm 
+import matplotlib.pyplot as plt 
+ 
+def main(): 
+    pcah = PCA()  # change to PCARow()  to use row wise version of data 
+    #-------------------column wise version of PCA---------------- 
+    [X,y,yseq] = Utils.read_images("C:/Users/Lenovo/Desktop/CPEG585/1172281_ASSIGNMENT_8/Data/ATTDataSet/Training/") 
+    print(X[0].shape) 
+ 
+    [Xtest,ytest,yseqt] = Utils.read_images("C:/Users/Lenovo/Desktop/CPEG585/1172281_ASSIGNMENT_8/Data/AttDataSet/Testing/") 
+    print(len(Xtest)) 
+    # X is a list f 112x92  2-d arrays, y are the labels 
+    [E, EV, mu] = pcah.pca_col(pcah.asColumnMatrix(X),100) # top 100 Eigen vectors 
+    # E is the Eigen value array, EV is the catenated Eigen vectors, mu is the mean image 
+    print(EV.shape) 
+ 
+    # turn the first (at most) 16 eigenvectors into grayscale  
+    # images (note: eigenvectors are stored by column!)  
+    EF16 = []  
+    for i in range(min(len(X), 16)):  
+        e = EV[:,i].reshape(X[10].shape)  
+        EF16.append(Utils.normalize(e,0,255)) # for visualization purposes 
+    print(len(EF16)) 
+    Utils.subplot(title="Eigenfaces AT&T Facedatabase", images=EF16, rows=4, cols=4, sptitle=" Eigenface", colormap=cm.jet, filename="python_pca_eigenfaces.png") 
+ 
+    # reconstruct projections of first n Eigen Faces 
+    steps=[i for i in range(10, min(len(X), 200), 40)]  
+    EF10 = []  
+    for i in range(min(len(steps), 16)):  
+        numEvs = steps[i] 
+ 
+        P = pcah.project(EV[:,0:numEvs], X[10].reshape (-1,1),"col", mu)  
+        R = pcah.reconstruct(EV[:,0:numEvs], P, "col" ,mu )  
+        # reshape and append to plots  
+        R = R.reshape(X[10].shape)  
+        EF10.append(Utils.normalize(R,0,255))  
+        # plot them and store the plot to "python_reconstruction.pdf"  
+    Utils.subplot(title="Reconstruction AT&T Facedatabase", images=EF10, rows=4, cols=4,  
+           sptitle=" Eigenvectors", sptitles=steps , colormap=cm.gray ,  
+           filename=" python_pca_reconstruction.png") 
+ 
+    for xi in X:  
+        pcah.projections.append(pcah.project(EV, xi.reshape(-1,1),"col",mu )) 
+    imtest = 70  # image number to test 
+    labelPredicted, index = pcah.predict(EV,Xtest[imtest],mu,y,yseq,"col") 
+    plt.figure() 
+    plt.subplot(1,2,1) 
+    plt.imshow(np.asarray(Xtest[index]),cmap=cm.gray) 
+    plt.xlabel(ytest[35]) 
+    plt.subplot(1,2,2) 
+    plt.imshow(np.asarray(Xtest[imtest]),cmap=cm.gray) 
+    plt.xlabel(labelPredicted) 
+    plt.show() 
+    print("actual label=" + ytest[imtest] + " label predicted=" + labelPredicted) 
+ 
+    #compute recognition accuracy 
+    i = 0 
+    accuracyCount = 0 
+    for xi in Xtest: 
+        labelPredicted,index = pcah.predict(EV,xi,mu,y,yseq,"col") 
+        if (labelPredicted == ytest[i]): 
+            accuracyCount = accuracyCount+1 
+        i = i+1 
+    print("recog accuracy = " + (str)(accuracyCount/i))
+
+if __name__ == "__main__":
+  sys.exit(int(main() or 0))
